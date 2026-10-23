@@ -11,3 +11,14 @@ docs/superpowers/
 plans/
 .vercel
 .env*
+# Local account/runtime data must never travel with a source checkout.
+*.env
+*.env.*
+*.pem
+*.key
+/.unsnooze/
+/.kimi-code/
+/.kimi/
+/.codex/
+/.aws/
+/.ssh/
