@@ -1,5 +1,10 @@
 # Kimi Code compatibility
 
+Launch with `kimi` (the installed wrapper) or `unsnooze kimi`. Likewise,
+`codex` and `unsnooze codex` select Codex. Bare `unsnooze` opens Sessions;
+unknown commands never become implicit Claude prompts. Use `unsnooze claude`
+explicitly for Claude, including flags such as `unsnooze claude --resume <id>`.
+
 The local `fix/kimi-code-adapter` branch supports Kimi Code 2.3.0 alongside
 the legacy Python `kimi-cli`. Both executables are named `kimi`, but their
 session formats and resume arguments differ.

@@ -66,7 +66,7 @@ createInterface({input:process.stdin}).on('line', text => {
     throw new Error('timed out; ' + readFileSync(join(stateDir, 'unsnooze.log'), 'utf8'));
   };
   try {
-    tmux('new-session', '-d', '-s', 'unsnooze-test', '-c', cwd, process.execPath, cli, '_run', 'kimi');
+    tmux('new-session', '-d', '-s', 'unsnooze-test', '-c', cwd, process.execPath, cli, 'kimi');
     const record = await wait(() => state().sessions?.[sid]);
     assert.equal(record.agent, 'kimi');
     assert.equal(record.status, 'stopped');

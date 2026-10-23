@@ -3,10 +3,12 @@ import assert from 'node:assert/strict';
 import { getAgent, listAgents } from '../src/agents/index.js';
 import { detectLimit, isBusy } from '../src/patterns.js';
 
-test('getAgent resolves claude and falls back to claude for unknown/missing ids', () => {
+test('getAgent preserves missing legacy ids but rejects explicit unknown agents', () => {
   assert.equal(getAgent('claude').id, 'claude');
   assert.equal(getAgent(undefined).id, 'claude');
-  assert.equal(getAgent('no-such-cli').id, 'claude');
+  for (const id of ['no-such-cli', '', 'constructor', '__proto__']) {
+    assert.throws(() => getAgent(id), /Unknown agent/);
+  }
 });
 
 test('listAgents includes claude', () => {

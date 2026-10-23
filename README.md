@@ -68,6 +68,11 @@ catches and resumes stops. Every command: [command reference](https://unsnooze.d
 
 ## Supported agents
 
+This source build requires explicit agent selection: `unsnooze codex`,
+`unsnooze kimi`, or `unsnooze claude`. Bare `unsnooze` opens the Sessions view.
+Unknown commands and agent IDs fail with an error instead of launching Claude.
+Installed shell wrappers (`codex`, `kimi`, etc.) keep selecting their own agent.
+
 | Agent | Detection | Revival |
 |---|---|---|
 | **Claude Code** | `StopFailure` hook + pane + transcripts; answers the limit menu safely | `claude --resume <id>` |

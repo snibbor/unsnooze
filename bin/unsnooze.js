@@ -1,8 +1,9 @@
 #!/usr/bin/env node
-// unsnooze — subcommand router; anything unrecognized is treated as claude
-// args and passed through the launcher (back-compat with the zsh wrapper).
+// unsnooze — explicit agent/subcommand router. A misspelled command must
+// never launch a different coding agent. Bare invocation opens Sessions.
 
 import { spawnSync } from 'node:child_process';
+import { readFileSync } from 'node:fs';
 
 const [, , cmd, ...rest] = process.argv;
 
@@ -38,7 +39,11 @@ async function safeImport(specifier) {
 }
 
 function runAgentFallback(agentId, args) {
-  const bin = (AGENT_FALLBACK_BINS[agentId] || AGENT_FALLBACK_BINS.claude)();
+  if (!Object.hasOwn(AGENT_FALLBACK_BINS, agentId)) {
+    console.error(`unsnooze: unknown agent "${agentId}"`);
+    return 2;
+  }
+  const bin = AGENT_FALLBACK_BINS[agentId]();
   process.stderr.write('unsnooze: install incomplete (upgrade in progress?) — running without limit-watch.\n');
   const r = spawnSync(bin, args, {
     stdio: 'inherit',
@@ -51,13 +56,10 @@ function runAgentFallback(agentId, args) {
 // passthrough, hooks, or daemons (their output lands in agent panes/logs).
 const USER_FACING = new Set(['status', 'resume-now', 'cancel', 'message', 'config', 'logs', 'report', 'sessions', 'reap', 'doctor', 'preview', 'usage', 'dashboard', 'hosts', 'fleet', 'prompt', 'design', 'help', '-h', '--help', '--help-unsnooze']);
 
-// Every named subcommand; anything else (or no args) is an agent launch.
-const NAMED_COMMANDS = new Set([
-  ...USER_FACING, 'setup', 'install', 'uninstall', 'update', 'daemon',
-  '_hook-stopfailure', '_monitor', '_run', '_resumer', '_update-check', '_remote', '_askpass',
-]);
-const isLaunchPath = cmd === '_run' || cmd === undefined || !NAMED_COMMANDS.has(cmd);
-const launchArgs = cmd === '_run' ? rest.slice(1) : (cmd === undefined ? [] : [cmd, ...rest]);
+const publicAgent = Object.hasOwn(AGENT_FALLBACK_BINS, cmd) ? cmd
+  : cmd === 'cursor-agent' ? 'cursor' : null;
+const isLaunchPath = cmd === '_run' || publicAgent !== null;
+const launchArgs = cmd === '_run' ? rest.slice(1) : rest;
 
 // Post-session update notice (update-notifier pattern): wrapper-only users
 // never run `unsnooze status`, so the moment the agent exits — screen
@@ -98,7 +100,22 @@ async function maybeUpdateNotices() {
 }
 
 async function main() {
+  if (publicAgent) {
+    const mod = await safeImport('../src/launcher.js');
+    if (!mod) return runAgentFallback(publicAgent, rest);
+    return mod.runLauncher(rest, publicAgent);
+  }
   switch (cmd) {
+    case undefined: {
+      const { cmdSessions } = await import('../src/cli.js');
+      return cmdSessions();
+    }
+    case '--version':
+    case '-V': {
+      const pkg = JSON.parse(readFileSync(new URL('../package.json', import.meta.url), 'utf8'));
+      console.log(`unsnooze ${pkg.version}`);
+      return 0;
+    }
     case 'status': {
       const { cmdStatus } = await import('../src/cli.js');
       return cmdStatus(rest);
@@ -190,12 +207,14 @@ async function main() {
     }
     case '_monitor': {
       if (!rest[0] || !rest[2]) { console.error('unsnooze _monitor: mux owner pane required'); return 2; }
+      if (!Object.hasOwn(AGENT_FALLBACK_BINS, rest[3])) { console.error('unsnooze _monitor: a known agent id is required'); return 2; }
       const mod = await safeImport('../src/monitor.js');
       if (!mod) return 0;   // detached — nothing useful to report
       return mod.runMonitor(rest[0], rest[1], rest[2], rest[3], rest[4]);
     }
     case '_run': {
       if (!rest[0]) { console.error('unsnooze _run: agent id required'); return 2; }
+      if (!Object.hasOwn(AGENT_FALLBACK_BINS, rest[0])) { console.error(`unsnooze: unknown agent "${rest[0]}"`); return 2; }
       const mod = await safeImport('../src/launcher.js');
       if (!mod) return runAgentFallback(rest[0], rest.slice(1));
       return mod.runLauncher(rest.slice(1), rest[0]);
@@ -336,7 +355,8 @@ async function main() {
       console.log(`unsnooze — wakes every limit-stopped AI coding session when the limit resets
 
 Usage:
-  unsnooze [claude args...]        run claude under limit-watch (default)
+  unsnooze                        show managed sessions (no agent launched)
+  unsnooze <agent> [args...]       run codex, kimi, claude, or another supported agent
   unsnooze _run <agent> [args...]  run a specific agent CLI under limit-watch
   unsnooze status                  list tracked sessions + reset countdowns
   unsnooze resume-now [id|--all]   resume stopped session(s) immediately
@@ -394,12 +414,8 @@ Usage:
       return 0;
     }
     default: {
-      // Everything else (including no args, --resume, -c, plain prompts) is a
-      // claude invocation — back-compat for the plain wrapper.
-      const args = cmd === undefined ? [] : [cmd, ...rest];
-      const mod = await safeImport('../src/launcher.js');
-      if (!mod) return runAgentFallback('claude', args);
-      return mod.runLauncher(args, 'claude');
+      console.error(`unsnooze: unknown command "${cmd}". Use "unsnooze codex ...", "unsnooze kimi ...", "unsnooze claude ...", or "unsnooze help".`);
+      return 2;
     }
   }
 }

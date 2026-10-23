@@ -259,8 +259,7 @@ test('the shell wrapper wraps cursor-agent, not the `cursor` IDE command', () =>
 test('agents without wrapperNames still wrap their own id', () => {
   assert.deepEqual(wrapperNamesFor('claude'), ['claude']);
   assert.deepEqual(wrapperNamesFor('opencode'), ['opencode']);
-  // getAgent falls back to claude for unknown ids — never borrow its names
-  assert.deepEqual(wrapperNamesFor('nope'), ['nope']);
+  assert.throws(() => wrapperNamesFor('nope'), /Unknown agent/);
 });
 
 // A model limit has no reset time, so the notification is the whole remedy.

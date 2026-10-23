@@ -300,6 +300,19 @@ export function createMonitor({
       }
     }
 
+    // `cancel` stops tracking this launch. Without this check the very next
+    // scrape upserted its unchanged banner back to "stopped", undoing the
+    // user's cancellation and reopening the agent repeatedly. Match the
+    // lease generation, never just a reusable pane id.
+    if (leaseId && Object.values(readState().sessions).some(rec =>
+      rec.status === 'cancelled' && rec.agent === agent.id
+      && rec.mux === muxName && rec.paneOwner === paneOwner
+      && rec.pane === pane && rec.leaseId === leaseId)) {
+      log(`pane ${pane}: tracking cancelled — monitor exiting`);
+      running = false;
+      return;
+    }
+
     // A monitor is spawned once per pane and lives as long as the agent, so it
     // routinely outlives an `npm i -g unsnooze`: the package on disk changes,
     // this process keeps the modules it loaded at launch, and no supervisor

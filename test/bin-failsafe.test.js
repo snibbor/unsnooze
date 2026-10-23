@@ -57,10 +57,11 @@ test('_run claude with missing src/ runs the plain agent CLI', () => {
   assert.doesNotMatch(r.stderr, /MODULE_NOT_FOUND|Cannot find module/, 'no stack spray');
 });
 
-test('default (bare claude args) path with missing src/ runs the plain agent CLI', () => {
+test('bare agent flags with missing src/ never default to Claude', () => {
   const r = run(['-c']);
-  assert.equal(r.status, 0, `expected exit 0, got ${r.status}: ${r.stderr}`);
-  assert.equal(r.stdout, '-c\n');
+  assert.equal(r.status, 2);
+  assert.equal(r.stdout, '');
+  assert.match(r.stderr, /unknown command/);
   assert.doesNotMatch(r.stderr, /MODULE_NOT_FOUND|Cannot find module/);
 });
 

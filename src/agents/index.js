@@ -1,5 +1,5 @@
-// Agent registry. Every supported CLI gets an adapter; unknown ids fall back
-// to claude (pre-adapter state records have no agent field).
+// Agent registry. Only an absent id on a legacy record defaults to Claude.
+// An explicit but unknown id must never silently select another agent.
 
 import claude from './claude.js';
 import codex from './codex.js';
@@ -16,7 +16,9 @@ const REGISTRY = { claude, codex, grok, qwen, kimi, opencode, agy, cursor };
 function defaultLaunchArgs(message) { return { args: [], messageViaPane: true }; }
 
 export function getAgent(id) {
-  const agent = REGISTRY[id] || claude;
+  const key = id == null ? 'claude' : id;
+  if (!Object.hasOwn(REGISTRY, key)) throw new Error(`Unknown agent "${id}"; refusing to default to Claude`);
+  const agent = REGISTRY[key];
   // Third-party/partial adapters may lack launchArgs — synthesize the same
   // default so callers (dispatch, tests) never have to null-check it.
   return typeof agent.launchArgs === 'function' ? agent : { ...agent, launchArgs: defaultLaunchArgs };
